@@ -1,7 +1,5 @@
 use crate::models::requests::accessibility_request::CheckAccessibilityRequest;
-use crate::models::requests::automate_tests_request::{
-    AutomateTestsIdeasRequest, AutomateTestsRequest,
-};
+use crate::models::requests::automate_tests_request::{AutomateTestsIdeasRequest, AutomateTestsRequest};
 use crate::models::requests::generate_ideas_request::GenerateIdeasRequest;
 use crate::utils::html::is_valid_html;
 use crate::utils::openai::call_openai_api;
@@ -18,7 +16,7 @@ async fn generate_ideas(data: web::Json<GenerateIdeasRequest>) -> impl Responder
         }
     }
 
-    let source = data.source_code.clone().unwrap();
+    let source = data.source_code.clone().unwrap_or_default();
 
     if !is_valid_html(&source) {
         return HttpResponse::BadRequest().json(json!({"error": ERROR_INVALID_ELEMENT}));
@@ -28,9 +26,9 @@ async fn generate_ideas(data: web::Json<GenerateIdeasRequest>) -> impl Responder
 
     let prompt = format!(
         "Generate test ideas based on the html element below. \
-        Focus on tests that are user oriented and not referring to html elements such as divs or classes. \
+        Focus on tests that are user-oriented and not referring to html elements such as divs or classes. \
         Include negative tests. If possible, add some creative test scenarios. \
-        Format the output as unordered lists, with a heading for each required list, such as Positive Tests, Negative Tests, etc. Don't include any other heading. \
+        Format the output as unordered lists, with a heading for each required list. \
         Html: \n```\n{}```\n\n\
         Format the output as the following example:\n\
         Positive Tests:\n\
@@ -56,7 +54,7 @@ async fn automate_tests(data: web::Json<AutomateTestsRequest>) -> impl Responder
     let mut prompt = format!(
         "Generate {} tests using {} based on the html element below. \
         Use {} as the baseUrl. Generate as many tests as possible. \
-        Always try to add assertions. \
+        Always add assertions. \
         Do not include explanatory or introductory text. The output must be all {} code.",
         data.framework, data.language, data.base_url, data.language,
     );
@@ -89,13 +87,10 @@ async fn check_accessibility(data: web::Json<CheckAccessibilityRequest>) -> impl
 
     let prompt = format!(
         "Check the HTML element below for accessibility issues according to WCAG 2.1. \
-        Think about this step by step. First, assess the element against each criterion. Then, report the result in the format specified below. \
+        Think about this step by step. First, assess the element against each criterion. Then, report the result in the specified format. \
         For the criteria that cannot be assessed just by looking at the HTML, create accessibility tests. \
         In the report, each criterion must be a link to the reference documentation.\n\n\
-        Html:\n\
-        ```\n\
-        {}\n\
-        ```\n\n\
+        Html:\n```{}```\n\n\
         Format the output as the following example:\n\
         - Issues\n\
         - Conformance Level A -\n\
@@ -134,17 +129,11 @@ async fn automate_tests_ideas(data: web::Json<AutomateTestsIdeasRequest>) -> imp
 
     let mut prompt = format!(
         "Using the following html:\n\n\
-        Html:\n\
-        ```\n\
-        {}\n\
-        ```\n\n\
+        Html:\n```\n{}\n```\n\n\
         Generate {} tests using {} for the following Test Cases:\n\n\
-        TestCases:\n\
-        ```\n\
-        {}\n\
-        ```\n\n\
+        TestCases:\n```\n{}\n```\n\n\
         Use {} as the baseUrl.\n\
-        Always try to add assertions.\n\
+        Always add assertions.\n\
         Do not include explanatory or introductory text. The output must be all {} code.",
         &data.source_code, data.framework, data.language, ideas_list, data.base_url, data.language
     );

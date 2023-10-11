@@ -12,7 +12,15 @@ const ERROR_INVALID_ELEMENT: &str = "Invalid html element.";
 
 #[post("/generate-ideas")]
 async fn generate_ideas(data: web::Json<GenerateIdeasRequest>) -> impl Responder {
-    if !is_valid_html(&data.source_code) {
+    if let Some(ping) = data.ping {
+        if ping {
+            return HttpResponse::Ok().json(json!({"pong": true}));
+        }
+    }
+
+    let source = data.source_code.clone().unwrap();
+
+    if !is_valid_html(&source) {
         return HttpResponse::BadRequest().json(json!({"error": ERROR_INVALID_ELEMENT}));
     }
 
@@ -31,7 +39,7 @@ async fn generate_ideas(data: web::Json<GenerateIdeasRequest>) -> impl Responder
         <Idea 1>\n\n\
         Creative Test Scenarios:\n\
         <Idea 1>",
-        &data.source_code
+        &source
     );
 
     call_openai_api(prompt, role).await
